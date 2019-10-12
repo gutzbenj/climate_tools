@@ -6,6 +6,7 @@ Link 2: http://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf
 from typing import Tuple, List, Union, Callable
 import operator
 from itertools import groupby
+import calendar
 import numpy as np
 import pandas as pd
 from pandas import Series
@@ -216,9 +217,63 @@ def number_of_tn(tmin: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[
 
 def calculate_percentile_threshold(timeseries: pd.DataFrame,
                                    percentile: float,
-                                   reference_period: Tuple[int, int]) -> List[float]:
+                                   reference_period: Tuple[int, int],
+                                   window: int,
+                                   min_percentage: float) -> List[float]:
     # todo implement function to generate thresholds based on percentiles of daily based values
-    pass
+    if not isinstance(timeseries, pd.DataFrame):
+        raise TypeError()
+    if not isinstance(percentile, float):
+        raise TypeError()
+    if not isinstance(reference_period, tuple):
+        raise TypeError()
+    if not len(reference_period) == 2:
+        raise ValueError()
+    if not (isinstance(reference_period[0], int) and isinstance(reference_period[1], int)):
+        raise TypeError()
+    if not (reference_period[1] - reference_period[0] + 1) == 30:
+        raise ValueError()
+    if not isinstance(window, int):
+        raise TypeError()
+    if not window > 0:
+        raise ValueError()
+    if not isinstance(min_percentage, float):
+        raise TypeError()
+    if not 0 <= min_percentage <= 1:
+        raise ValueError()
+
+    timeseries = timeseries.copy()
+    timeseries.columns = ["DATE", "VALUES"]
+
+    start_date = pd.to_datetime(f"{reference_period[0]}-01-01")
+    end_date = pd.to_datetime(f"{reference_period[1]}-12-31")
+
+    date_operations = pd.DataFrame({"DATE": pd.date_range(start_date, end_date)})
+    date_operations["LEAPYEAR"] = date_operations["DATE"].dt.year.apply(calendar.isleap)
+    date_operations["DAYOFYEAR"] = date_operations["DATE"].dt.dayofyear
+
+    date_operations[np.where(date_operations["LEAPYEAR"] and date_operations["DAYOFYEAR"] >= 60)] -= 1
+
+    daterange_extended = pd.date_range(start_date - pd.Timedelta(days=int(window / 2)),
+                                       end_date + pd.Timedelta(days=int(window / 2)))
+
+    timeseries = pd.merge(pd.DataFrame({"DATE": daterange_extended}),
+                          timeseries)
+
+    timeseries.iloc[:, 1] = timeseries.iloc[:, 1].rolling(window, center=True).mean()
+
+    days_of_year = range(1, 366)
+
+    thresholds = []
+    for day_of_year in days_of_year:
+        selection_of_timeseries = timeseries[date_operations["DAYOFYEAR"].isin([day_of_year]), "VALUES"]
+        percentage_of_values = selection_of_timeseries.agg(lambda x: x.notna().sum() / x.size).item()
+        if percentage_of_values < min_percentage:
+            thresholds.append(np.nan)
+            continue
+        thresholds.append(selection_of_timeseries[selection_of_timeseries.notna()].quantile([percentile]).item())
+
+    return thresholds
 
 
 def number_of_cn(tmin):
