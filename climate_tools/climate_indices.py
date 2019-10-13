@@ -9,8 +9,14 @@ from itertools import groupby
 import calendar
 import numpy as np
 import pandas as pd
-from pandas import Series
-from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
+# from pandas import Series
+# from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
+
+# TYPING_UNION_AGGREGATION = Union[pd.Series,
+#                                  pd.core.groupby.DataFrameGroupBy,
+#                                  pd.core.groupby.SeriesGroupBy]
+
+DAY_OF_YEAR_29_FEB = 60
 
 
 def is_valid_year_length(arr: pd.Series) -> bool:
@@ -49,9 +55,9 @@ def rle(arr: pd.Series) -> Tuple[List[float], List[int]]:
     return values, lengths
 
 
-def number_of(arr: Union[Series, DataFrameGroupBy, SeriesGroupBy],
+def number_of(arr: pd.Series,
               num: float,
-              op: Callable[[Series, float], List[bool]]) -> Union[float, int]:
+              op: Callable[[pd.Series, float], List[bool]]) -> Union[float, int]:
     """Helper function to count numbers in an array according a given threshold and an operator
 
     Args:
@@ -63,7 +69,7 @@ def number_of(arr: Union[Series, DataFrameGroupBy, SeriesGroupBy],
         np.nan or number: the count that results from the comparison
 
     """
-    assert isinstance(arr, (Series, DataFrameGroupBy, SeriesGroupBy))
+    assert isinstance(arr, pd.Series)
     assert isinstance(num, float)
     assert isinstance(op, (operator.lt, operator.le, operator.eq, operator.ne, operator.ge, operator.gt))
 
@@ -73,17 +79,17 @@ def number_of(arr: Union[Series, DataFrameGroupBy, SeriesGroupBy],
     return int(np.sum(op(arr, num)))
 
 
-def number_of_fd(tmin: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[float, int]:
+def number_of_fd(tmin: pd.Series) -> Union[float, int]:
     """Function for count of frost days (days where minimum temperature lower then 0°C)
 
     Args:
-        tmin (list): value array of minimum temperature
+        tmin (pd.Series): value array of minimum temperature
 
     Returns:
         np.nan or number: the count of frost days
 
     """
-    if not isinstance(tmin, (Series, DataFrameGroupBy, SeriesGroupBy)):
+    if not isinstance(tmin, pd.Series):
         raise TypeError("Error: expecting pandas.Series as array.")
 
     op = operator.lt
@@ -92,17 +98,17 @@ def number_of_fd(tmin: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[
     return number_of(tmin, num, op)
 
 
-def number_of_sd(tmax: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[float, int]:
+def number_of_sd(tmax: pd.Series) -> Union[float, int]:
     """Function for count of summer days (days where maximum temperature greater then 25°C)
 
     Args:
-        tmax (list): value array of maximum temperature
+        tmax (pd.Series): value array of maximum temperature
 
     Returns:
         np.nan or number: the count of summer days
 
     """
-    if not isinstance(tmax, (Series, DataFrameGroupBy, SeriesGroupBy)):
+    if not isinstance(tmax, pd.Series):
         raise TypeError("Error: expecting pandas.Series as array.")
 
     num = 25.0
@@ -111,17 +117,17 @@ def number_of_sd(tmax: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[
     return number_of(tmax, num, op)
 
 
-def consecutive_fd(tmin: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[float, int]:
+def consecutive_fd(tmin: pd.Series) -> Union[float, int]:
     """Function for determining greatest number of consecutive frost days (tmin < 0°C)
 
     Args:
-        tmin (list): value array of daily minimum temperature
+        tmin (pd.Series): value array of daily minimum temperature
 
     Returns:
         np.nan or number: the count of icing days
 
     """
-    if not isinstance(tmin, (Series, DataFrameGroupBy, SeriesGroupBy)):
+    if not isinstance(tmin, pd.Series):
         raise TypeError("Error: expecting pandas.Series as array.")
 
     if not is_valid_year_length(tmin):
@@ -134,17 +140,17 @@ def consecutive_fd(tmin: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Unio
     return int(np.max(np.array(lengths)[np.where(values)]))
 
 
-def consecutive_sd(tmax: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[float, int]:
+def consecutive_sd(tmax: pd.Series) -> Union[float, int]:
     """Function for determining greatest number of consecutive summer days (tmax > 25°C)
 
     Args:
-        tmax (list): value array of daily minimum temperature
+        tmax (pd.Series): value array of daily minimum temperature
 
     Returns:
         np.nan or number: the count of icing days
 
     """
-    if not isinstance(tmax, (Series, DataFrameGroupBy, SeriesGroupBy)):
+    if not isinstance(tmax, pd.Series):
         raise TypeError("Error: expecting pandas.Series as array.")
 
     if not is_valid_year_length(tmax):
@@ -157,17 +163,17 @@ def consecutive_sd(tmax: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Unio
     return int(np.max(np.array(lengths)[np.where(values)]))
 
 
-def sum_of_hdd(tmean: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[float, int]:
+def sum_of_hdd(tmean: pd.Series) -> Union[float, int]:
     """Function for determining heating degree days (sum of [17°C - tmean] for all days where tmean < 17°C)
 
     Args:
-        tmean (list): value array of daily minimum temperature
+        tmean (pd.Series): value array of daily minimum temperature
 
     Returns:
         np.nan or number: the sum of degree difference
 
     """
-    if not isinstance(tmean, (Series, DataFrameGroupBy, SeriesGroupBy)):
+    if not isinstance(tmean, pd.Series):
         raise TypeError("Error: expecting pandas.Series as array.")
 
     if not is_valid_year_length(tmean):
@@ -178,17 +184,17 @@ def sum_of_hdd(tmean: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[f
     return np.sum(num - tmean[operator.lt(tmean, num)]).item()
 
 
-def number_of_id(tmax: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[float, int]:
+def number_of_id(tmax: pd.Series) -> Union[float, int]:
     """Function for count of icing days (days where maximum temperature smaller then 0°C)
 
     Args:
-        tmax (list): value array of maximum temperature
+        tmax (pd.Series): value array of maximum temperature
 
     Returns:
         np.nan or number: the count of icing days
 
     """
-    if not isinstance(tmax, (Series, DataFrameGroupBy, SeriesGroupBy)):
+    if not isinstance(tmax, pd.Series):
         raise TypeError("Error: expecting pandas.Series as array.")
 
     op = operator.lt
@@ -197,17 +203,18 @@ def number_of_id(tmax: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[
     return number_of(tmax, num, op)
 
 
-def number_of_tn(tmin: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[float, int]:
+def number_of_tn(tmin: pd.Series) -> Union[float, int]:
     """Function for count of tropical nights (days where minimum temperature greater then 20°C)
 
     Args:
-        tmin (list): value array of minimum temperature
+        tmin (pd.Series): value array of minimum temperature
 
     Returns:
         np.nan or number: the count of icing days
 
     """
-    assert isinstance(tmin, (Series, DataFrameGroupBy, SeriesGroupBy))
+    if not isinstance(tmin, pd.Series):
+        raise TypeError("Error: expecting pandas.Series as array.")
 
     op = operator.gt
     num = 20.0
@@ -219,7 +226,21 @@ def calculate_percentile_threshold(timeseries: pd.DataFrame,
                                    percentile: float,
                                    reference_period: Tuple[int, int],
                                    window: int,
-                                   min_percentage: float) -> List[float]:
+                                   min_percentage: float) -> pd.Series:
+    """Function for count of tropical nights (days where minimum temperature greater then 20°C)
+
+    Args:
+        timeseries (pd.DataFrame) -
+        percentile (float) -
+        reference_period (tuple) -
+        window (int) -
+        min_percentage (float) -
+
+    Returns:
+        np.nan or number: the count of icing days
+
+    """
+
     # todo implement function to generate thresholds based on percentiles of daily based values
     if not isinstance(timeseries, pd.DataFrame):
         raise TypeError()
@@ -252,7 +273,8 @@ def calculate_percentile_threshold(timeseries: pd.DataFrame,
     date_operations["LEAPYEAR"] = date_operations["DATE"].dt.year.apply(calendar.isleap)
     date_operations["DAYOFYEAR"] = date_operations["DATE"].dt.dayofyear
 
-    date_operations[np.where(date_operations["LEAPYEAR"] and date_operations["DAYOFYEAR"] >= 60)] -= 1
+    date_operations.loc[date_operations["LEAPYEAR"] &
+                        (date_operations["DAYOFYEAR"] >= DAY_OF_YEAR_29_FEB), "DAYOFYEAR"] -= 1
 
     daterange_extended = pd.date_range(start_date - pd.Timedelta(days=int(window / 2)),
                                        end_date + pd.Timedelta(days=int(window / 2)))
@@ -266,19 +288,70 @@ def calculate_percentile_threshold(timeseries: pd.DataFrame,
 
     thresholds = []
     for day_of_year in days_of_year:
-        selection_of_timeseries = timeseries[date_operations["DAYOFYEAR"].isin([day_of_year]), "VALUES"]
+        selection_of_timeseries = timeseries.loc[date_operations["DAYOFYEAR"].isin([day_of_year]), "VALUES"]
+
         percentage_of_values = selection_of_timeseries.agg(lambda x: x.notna().sum() / x.size).item()
+
         if percentage_of_values < min_percentage:
             thresholds.append(np.nan)
             continue
+
         thresholds.append(selection_of_timeseries[selection_of_timeseries.notna()].quantile([percentile]).item())
 
-    return thresholds
+    return pd.Series(thresholds)
 
 
-def number_of_cn(tmin):
-    # todo implement function for cold nights
-    pass
+def fix_timeseries_for_leapyear(timeseries: pd.Series) -> pd.Series:
+    """Function for count of tropical nights (days where minimum temperature greater then 20°C)
+
+    Args:
+        timeseries (pd.Series) -
+
+    Returns:
+        np.nan or number: the count of icing days
+
+    """
+
+    if not isinstance(timeseries, pd.Series):
+        raise TypeError("Error: expecting pandas.Series as array.")
+
+    if not is_valid_year_length(timeseries):
+        return np.nan
+
+    return pd.concat(timeseries[:DAY_OF_YEAR_29_FEB],
+                     timeseries[DAY_OF_YEAR_29_FEB].repeat(2),
+                     timeseries[(DAY_OF_YEAR_29_FEB + 1):]).reset_index(drop=True)
+
+
+def number_of_cn(tmin: pd.Series,
+                 thresholds: pd.Series) -> Union[float, int]:
+    """Function for count of tropical nights (days where minimum temperature greater then 20°C)
+
+    Args:
+        tmin (pd.Series): value array of minimum temperature
+        thresholds (pd.Series) -
+
+    Returns:
+        np.nan or number: the count of icing days
+
+    """
+
+    if not isinstance(tmin, pd.Series):
+        raise TypeError("Error: expecting pandas.Series as array.")
+
+    if not is_valid_year_length(tmin):
+        return np.nan
+
+    if tmin.size > thresholds.size:
+        thresholds = fix_timeseries_for_leapyear(thresholds)
+
+    values, lengths = rle(pd.Series(tmin < thresholds))
+
+    cold_nights = (np.array(values) & operator.ge(np.array(lengths), 6)).nonzero()[0]
+
+    if not cold_nights.any():
+        return np.nan
+    return np.sum(np.array(values)[(np.array(values) & operator.ge(np.array(lengths), 6)).nonzero()[0]]).item()
 
 
 def number_of_cd(tmean):
@@ -296,7 +369,7 @@ def number_of_wd(tmax_or_tmean):
     pass
 
 
-def growing_season_length(tmean: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[float, int]:
+def growing_season_length(tmean: pd.Series) -> Union[float, int]:
     """Function for determining the growing-season-length
 
     Args:
@@ -306,7 +379,7 @@ def growing_season_length(tmean: Union[Series, DataFrameGroupBy, SeriesGroupBy])
         np.nan or number: the count of icing days
 
     """
-    assert isinstance(tmean, (Series, DataFrameGroupBy, SeriesGroupBy))
+    assert isinstance(tmean, pd.Series)
 
     if not is_valid_year_length(tmean):
         return np.nan
@@ -328,19 +401,18 @@ def growing_season_length(tmean: Union[Series, DataFrameGroupBy, SeriesGroupBy])
     # End of growing season
     if tmean.size == 366:
         jday_1jul = 183
-
-    if tmean.size == 365:
+    else:  # tmean.size == 365:
         jday_1jul = 182
 
     values, lengths = rle(operator.lt(tmean, num))
     values, lengths = np.repeat(values, lengths), np.repeat(lengths, lengths)
 
-    end_arr = np.where(values & operator.ge(lengths, min_length))[0]
+    end_arr = (values & operator.ge(lengths, min_length)).nonzero()[0]
 
     if not end_arr.size > 0:
         return 0
 
-    end = end_arr[np.where(end_arr > jday_1jul)]
+    end = end_arr[(end_arr > jday_1jul).nonzero()]
 
     if not end:
         return 0
@@ -350,7 +422,7 @@ def growing_season_length(tmean: Union[Series, DataFrameGroupBy, SeriesGroupBy])
     return gsl
 
 
-def rr10(prec: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[float, int]:
+def rr10(prec: pd.Series) -> Union[float, int]:
     """Function for count of heavy precipitation (days where rr greater equal 10mm)
 
     Args:
@@ -360,7 +432,7 @@ def rr10(prec: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[float, i
         np.nan or number: the count of icing days
 
     """
-    assert isinstance(prec, (Series, DataFrameGroupBy, SeriesGroupBy))
+    assert isinstance(prec, pd.Series)
 
     op = operator.ge
     num = 10.0
@@ -368,7 +440,7 @@ def rr10(prec: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[float, i
     return number_of(prec, num, op)
 
 
-def rr20(prec: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[float, int]:
+def rr20(prec: pd.Series) -> Union[float, int]:
     """Function for count of heavy precipitation (days where rr greater equal 20mm)
 
     Args:
@@ -378,7 +450,7 @@ def rr20(prec: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[float, i
         np.nan or number: the count of icing days
 
     """
-    assert isinstance(prec, (Series, DataFrameGroupBy, SeriesGroupBy))
+    assert isinstance(prec, pd.Series)
 
     op = operator.ge
     num = 20.0
@@ -389,7 +461,7 @@ def rr20(prec: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[float, i
 # 8. Number of consecutive dry days
 
 
-def consecutive_dd(prec: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Union[float, int]:
+def consecutive_dd(prec: pd.Series) -> Union[float, int]:
     """Function for determining greatest number of consecutive dry days (rr < 1mm)
 
     Args:
@@ -399,7 +471,7 @@ def consecutive_dd(prec: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Unio
         np.nan or number: the count of icing days
 
     """
-    assert isinstance(prec, (Series, DataFrameGroupBy, SeriesGroupBy))
+    assert isinstance(prec, pd.Series)
 
     if not is_valid_year_length(prec):
         return np.nan
@@ -408,4 +480,4 @@ def consecutive_dd(prec: Union[Series, DataFrameGroupBy, SeriesGroupBy]) -> Unio
 
     values, lengths = rle(operator.lt(prec, num))
 
-    return int(np.max(lengths[np.where(values)]))
+    return int(np.max(lengths[np.array(values).nonzero()]))
