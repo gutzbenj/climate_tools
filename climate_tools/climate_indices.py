@@ -241,7 +241,6 @@ def calculate_percentile_threshold(timeseries: pd.DataFrame,
 
     """
 
-    # todo implement function to generate thresholds based on percentiles of daily based values
     if not isinstance(timeseries, pd.DataFrame):
         raise TypeError()
     if not isinstance(percentile, float):
@@ -318,9 +317,30 @@ def fix_timeseries_for_leapyear(timeseries: pd.Series) -> pd.Series:
     if not is_valid_year_length(timeseries):
         return np.nan
 
-    return pd.concat(timeseries[:DAY_OF_YEAR_29_FEB],
-                     timeseries[DAY_OF_YEAR_29_FEB].repeat(2),
-                     timeseries[(DAY_OF_YEAR_29_FEB + 1):]).reset_index(drop=True)
+    return pd.concat([timeseries[:DAY_OF_YEAR_29_FEB],
+                      timeseries[[DAY_OF_YEAR_29_FEB]].repeat(2),
+                      timeseries[(DAY_OF_YEAR_29_FEB + 1):]]).reset_index(drop=True)
+
+
+def _number_of_thresholds(data: pd.Series,
+                          thresholds: pd.Series):
+    assert isinstance(data, pd.Series), "Error: 'data' is not of type pandas.Series"
+    assert isinstance(thresholds, pd.Series), "Error: 'thresholds' is not of type pandas.Series"
+
+    if not is_valid_year_length(data):
+        return np.nan
+
+    if data.size > thresholds.size:
+        thresholds = fix_timeseries_for_leapyear(thresholds)
+
+    values, lengths = rle(pd.Series(data.reset_index(drop=True) < thresholds.reset_index(drop=True)))
+
+    _number_of_vals = (np.array(values) & operator.ge(np.array(lengths), 6)).nonzero()[0]
+
+    if not _number_of_vals.any():
+        return np.nan
+
+    return np.sum(_number_of_vals)
 
 
 def number_of_cn(tmin: pd.Series,
@@ -338,20 +358,10 @@ def number_of_cn(tmin: pd.Series,
 
     if not isinstance(tmin, pd.Series):
         raise TypeError("Error: expecting pandas.Series as array.")
+    if not isinstance(thresholds, pd.Series):
+        raise TypeError("Error: expecting pandas.Series as array.")
 
-    if not is_valid_year_length(tmin):
-        return np.nan
-
-    if tmin.size > thresholds.size:
-        thresholds = fix_timeseries_for_leapyear(thresholds)
-
-    values, lengths = rle(pd.Series(tmin < thresholds))
-
-    cold_nights = (np.array(values) & operator.ge(np.array(lengths), 6)).nonzero()[0]
-
-    if not cold_nights.any():
-        return np.nan
-    return np.sum(np.array(values)[(np.array(values) & operator.ge(np.array(lengths), 6)).nonzero()[0]]).item()
+    return _number_of_thresholds(tmin, thresholds)
 
 
 def number_of_cd(tmean):
